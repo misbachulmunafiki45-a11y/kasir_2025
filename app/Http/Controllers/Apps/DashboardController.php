@@ -44,9 +44,12 @@ class DashboardController extends Controller
 
         // isi 7 hari (0 untuk hari tanpa transaksi)
         for ($i = 0; $i <= 6; $i++) {
-            $date = Carbon::now()->subDays(6 - $i)->toDateString();
-            $sales_date[] = $date;
-            $grand_total[] = (int) ($mapSales[$date] ?? 0);
+            $dateObj = Carbon::now()->subDays(6 - $i);
+            $dateKey = $dateObj->toDateString(); // Y-m-d untuk mapping
+            $label = $dateObj->format('d/m');    // label human-friendly
+
+            $sales_date[] = $label;
+            $grand_total[] = (int) ($mapSales[$dateKey] ?? 0);
         }
 
         // hitung data hari ini dengan whereDate agar hanya tanggal hari ini yang dihitung

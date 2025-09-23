@@ -13,7 +13,8 @@ class RolesTableSeeder extends Seeder
      */
     public function run(): void
     {
-        Role::create(['name' => 'admin']);
-        Role::create(['name' => 'cashier']);
+        // make roles seeding idempotent
+        Role::firstOrCreate(['name' => 'admin']);
+        Role::firstOrCreate(['name' => 'cashier']);
     }
 }

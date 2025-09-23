@@ -220,7 +220,12 @@ export default {
                     display: false,
                 },
             },
-            beginZero: true,
+            // ensure bar chart starts from zero
+            scales: {
+                y: {
+                    beginAtZero: true,
+                },
+            },
         });
 
         //chart sell week
@@ -242,7 +247,7 @@ export default {
             datasets: [
                 {
                     data: props.total,
-                    backgroundColor: randomBackgroundColor(5),
+                    backgroundColor: randomBackgroundColor(props.product.length),
                 },
             ],
         };

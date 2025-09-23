@@ -4,8 +4,11 @@ use Illuminate\Support\Facades\Route;
 
 //route home
 Route::get('/', function () {
+    if (auth()->check()) {
+        return redirect()->route('apps.dashboard');
+    }
     return \Inertia\Inertia::render('Auth/Login');
-})->middleware('guest');
+});
 
 //prefix "apps"
 Route::prefix('apps')->group(function() {
@@ -14,7 +17,8 @@ Route::prefix('apps')->group(function() {
     Route::group(['middleware' => ['auth']], function () {
 
         //route dashboard
-        Route::get('dashboard', App\Http\Controllers\Apps\DashboardController::class)->name('apps.dashboard');
+        Route::get('dashboard', App\Http\Controllers\Apps\DashboardController::class)
+            ->name('apps.dashboard');
 
         //route permissions
         Route::get('/permissions', [\App\Http\Controllers\Apps\PermissionController::class, 'index'])->name('apps.permissions.index');
@@ -81,7 +85,6 @@ Route::post('/stocks/{product}/add', [\App\Http\Controllers\Apps\StockController
         //route profits pdf
         Route::get('/profits/pdf', [\App\Http\Controllers\Apps\ProfitController::class, 'pdf'])->name('apps.profits.pdf');
 
-        //route stocks index already defined via resource elsewhere
         // add filter route for stocks (date range)
         Route::get('/stocks/filter', [\App\Http\Controllers\Apps\StockController::class, 'filter'])->name('apps.stocks.filter');
 
@@ -90,5 +93,17 @@ Route::post('/stocks/{product}/add', [\App\Http\Controllers\Apps\StockController
 
         //route stocks pdf
         Route::get('/stocks/pdf', [\App\Http\Controllers\Apps\StockController::class, 'pdf'])->name('apps.stocks.pdf');
+        // temporary debug route to verify data & permissions (protected by auth)
+        Route::get('/debug-counts', function() {
+            $user = auth()->user();
+            return response()->json([
+                'db'            => config('database.connections.mysql.database'),
+                'products'      => \App\Models\Product::count(),
+                'categories'    => \App\Models\Category::count(),
+                'stock_entries' => \App\Models\StockEntry::count(),
+                'user'          => $user ? ['id' => $user->id, 'email' => $user->email] : null,
+                'permissions'   => $user ? $user->getAllPermissions()->pluck('name') : [],
+            ]);
+        })->name('apps.debug.counts');
     });
 });

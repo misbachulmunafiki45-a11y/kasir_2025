@@ -13,58 +13,26 @@ class PermissionsTableSeeder extends Seeder
      */
     public function run(): void
     {
-        //permission dashboard
-        Permission::create(['name' => 'dashboard.index', 'guard_name' => 'web']);
-        Permission::create(['name' => 'dashboard.sales_chart', 'guard_name' => 'web']);
-        Permission::create(['name' => 'dashboard.sales_today', 'guard_name' => 'web']);
-        Permission::create(['name' => 'dashboard.profits_today', 'guard_name' => 'web']);
-        Permission::create(['name' => 'dashboard.best_selling_product', 'guard_name' => 'web']);
-        Permission::create(['name' => 'dashboard.product_stock', 'guard_name' => 'web']);
-
-        //permission users
-        Permission::create(['name' => 'users.index', 'guard_name' => 'web']);
-        Permission::create(['name' => 'users.create', 'guard_name' => 'web']);
-        Permission::create(['name' => 'users.edit', 'guard_name' => 'web']);
-        Permission::create(['name' => 'users.delete', 'guard_name' => 'web']);
-
-        //permission roles
-        Permission::create(['name' => 'roles.index', 'guard_name' => 'web']);
-        Permission::create(['name' => 'roles.create', 'guard_name' => 'web']);
-        Permission::create(['name' => 'roles.edit', 'guard_name' => 'web']);
-        Permission::create(['name' => 'roles.delete', 'guard_name' => 'web']);
-
-        //permission permissions
-        Permission::create(['name' => 'permissions.index', 'guard_name' => 'web']);
-
-        //permission categories
-        Permission::create(['name' => 'categories.index', 'guard_name' => 'web']);
-        Permission::create(['name' => 'categories.create', 'guard_name' => 'web']);
-        Permission::create(['name' => 'categories.edit', 'guard_name' => 'web']);
-        Permission::create(['name' => 'categories.delete', 'guard_name' => 'web']);
-
-        //permission products
-        Permission::create(['name' => 'products.index', 'guard_name' => 'web']);
-        Permission::create(['name' => 'products.create', 'guard_name' => 'web']);
-        Permission::create(['name' => 'products.edit', 'guard_name' => 'web']);
-        Permission::create(['name' => 'products.delete', 'guard_name' => 'web']);
-
-        //permission stocks
-        Permission::create(['name' => 'stocks.index', 'guard_name' => 'web']);
-        Permission::create(['name' => 'stocks.update', 'guard_name' => 'web']);
-
-        //permission customers
-        Permission::create(['name' => 'customers.index', 'guard_name' => 'web']);
-        Permission::create(['name' => 'customers.create', 'guard_name' => 'web']);
-        Permission::create(['name' => 'customers.edit', 'guard_name' => 'web']);
-        Permission::create(['name' => 'customers.delete', 'guard_name' => 'web']);
-
-        //permission transactions
-        Permission::create(['name' => 'transactions.index', 'guard_name' => 'web']);
-
-        //permissions sales
-        Permission::create(['name' => 'sales.index', 'guard_name' => 'web']);
-
-        //permissions profit
-        Permission::create(['name' => 'profits.index', 'guard_name' => 'web']);
+        $perms = [
+            'dashboard.index',
+            'dashboard.sales_chart',
+            'dashboard.sales_today',
+            'dashboard.profits_today',
+            'dashboard.best_selling_product',
+            'dashboard.product_stock',
+            'users.index','users.create','users.edit','users.delete',
+            'roles.index','roles.create','roles.edit','roles.delete',
+            'permissions.index',
+            'categories.index','categories.create','categories.edit','categories.delete',
+            'products.index','products.create','products.edit','products.delete',
+            'stocks.index','stocks.update',
+            'customers.index','customers.create','customers.edit','customers.delete',
+            'transactions.index',
+            'sales.index',
+            'profits.index',
+        ];
+        foreach ($perms as $name) {
+            Permission::firstOrCreate(['name' => $name, 'guard_name' => 'web']);
+        }
     }
 }
