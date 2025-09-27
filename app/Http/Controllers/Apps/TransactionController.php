@@ -156,10 +156,30 @@ class TransactionController extends Controller implements HasMiddleware
         //generate no invoice
         $invoice = 'TRX-'.Str::upper($random);
 
+        // tentukan customer_id: utamakan input manual jika ada
+        $customerId = null;
+        $manualName = trim((string) $request->input('manual_customer_name', ''));
+        if ($manualName !== '') {
+            $existing = Customer::where('name', $manualName)->first();
+            if ($existing) {
+                $customerId = $existing->id;
+            } else {
+                // buat customer baru minimal dengan nama saja
+                $newCustomer = Customer::create([
+                    'name' => $manualName,
+                    'no_telp' => '-',
+                    'address' => '-',
+                ]);
+                $customerId = $newCustomer->id;
+            }
+        } elseif ($request->filled('customer_id')) {
+            $customerId = $request->customer_id;
+        }
+
         //insert transaction
         $transaction = Transaction::create([
             'cashier_id'    => auth()->user()->id,
-            'customer_id'   => $request->customer_id,
+            'customer_id'   => $customerId,
             'invoice'       => $invoice,
             'cash'          => $request->cash,
             'change'        => $request->change,
@@ -223,5 +243,37 @@ class TransactionController extends Controller implements HasMiddleware
 
         //return view
         return view('print.nota', compact('transaction'));
+    }
+    /**
+     * searchProducts
+     *
+     * @param  mixed $request
+     * @return void
+     */
+    public function searchProducts(Request $request)
+    {
+        $q = trim($request->input('q', ''));
+
+        if ($q === '') {
+            return response()->json([
+                'success' => true,
+                'data'    => []
+            ]);
+        }
+
+        $products = Product::query()
+            ->select(['id', 'title', 'barcode', 'sell_price', 'stock'])
+            ->where(function($w) use ($q) {
+                $w->where('title', 'LIKE', "%$q%")
+                  ->orWhere('barcode', 'LIKE', "%$q%");
+            })
+            ->orderBy('title')
+            ->limit(10)
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data'    => $products
+        ]);
     }
 }

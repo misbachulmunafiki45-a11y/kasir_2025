@@ -218,3 +218,8 @@ body.modal-open .container {
 .border-top-warning {
     border-top: 5px solid #f9b115!important;
 }
+
+/* Ensure SweetAlert2 modal overlays above CoreUI fixed components (footer, header, sidebar) */
+.swal2-container {
+    z-index: 2000 !important;
+}

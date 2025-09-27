@@ -10,9 +10,20 @@
                         <div class="card border-0 rounded-3 shadow">
                             <div class="card-body">
 
-                                <div class="input-group mb-3">
-                                    <span class="input-group-text"><i class="fa fa-barcode"></i></span>
-                                    <input type="text" class="form-control" v-model="barcode" @keyup="searchProduct" placeholder="Scan or Input Barcode">
+                                <div class="mb-3 position-relative">
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fa fa-barcode"></i></span>
+                                        <input type="text" class="form-control" v-model="barcode" @input="onBarcodeInput" @keyup.enter="searchProduct" placeholder="Input Nama Barang">
+                                    </div>
+                                    <div v-if="suggestionsVisible" class="list-group position-absolute w-100" style="z-index: 1050; max-height: 280px; overflow-y: auto;">
+                                        <button type="button"
+                                                v-for="item in suggestions"
+                                                :key="item.id"
+                                                class="list-group-item list-group-item-action"
+                                                @click="selectSuggestion(item)">
+                                            <div class="fw-bold">{{ item.title }}</div>
+                                        </button>
+                                    </div>
                                 </div>
                                 <div class="mb-3">
                                     <label class="form-label fw-bold">Product Name</label>
@@ -65,8 +76,20 @@
                                         <input class="form-control" type="text" :value="auth.user.name" readonly>
                                     </div>
                                     <div class="col-md-6 float-end">
-                                        <label class="fw-bold">Customer</label>
-                                        <VueMultiselect v-model="customer_id" label="name" track-by="name" :options="customers"></VueMultiselect>
+                                        <label class="fw-bold d-flex align-items-center justify-content-between">
+                                            <span>Customer</span>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="manualCustomerSwitch" v-model="manualCustomer">
+                                                <label class="form-check-label" for="manualCustomerSwitch">Input manual</label>
+                                            </div>
+                                        </label>
+                                        <div v-if="!manualCustomer">
+                                            <VueMultiselect v-model="customer_id" label="name" track-by="name" :options="customers"></VueMultiselect>
+                                        </div>
+                                        <div v-else>
+                                            <input type="text" class="form-control" v-model="manualCustomerName" placeholder="Nama Customer (manual)">
+                                            <small class="text-muted">Biarkan kosong toggle ini untuk memilih dari daftar Customers.</small>
+                                        </div>
                                     </div>
                                 </div>
                                 <hr>
@@ -168,8 +191,51 @@
             const barcode = ref('');
             const product = ref({});
             const qty = ref(1);
+            const suggestions = ref([]);
+            const suggestionsVisible = ref(false);
+            let suggestionTimer = null;
 
-            //metho "searchProduct"
+            //method to fetch suggestions by name/barcode
+            const onBarcodeInput = () => {
+                const q = (barcode.value || '').trim();
+
+                // reset product when user is typing a new query
+                product.value = {};
+
+                if (suggestionTimer) clearTimeout(suggestionTimer);
+
+                if (q.length < 2) {
+                    suggestions.value = [];
+                    suggestionsVisible.value = false;
+                    return;
+                }
+
+                suggestionTimer = setTimeout(() => {
+                    axios.post('/apps/transactions/searchProducts', { q })
+                        .then(res => {
+                            if (res.data && res.data.success) {
+                                suggestions.value = res.data.data;
+                                suggestionsVisible.value = suggestions.value.length > 0;
+                            } else {
+                                suggestions.value = [];
+                                suggestionsVisible.value = false;
+                            }
+                        })
+                        .catch(() => {
+                            suggestions.value = [];
+                            suggestionsVisible.value = false;
+                        });
+                }, 250);
+            };
+
+            const selectSuggestion = (item) => {
+                product.value = item;
+                barcode.value = item.barcode || item.title;
+                suggestions.value = [];
+                suggestionsVisible.value = false;
+            };
+
+            //metho "searchProduct" (exact match by barcode on Enter)
             const searchProduct = () => {
 
                 //fetch with axios
@@ -188,6 +254,10 @@
                         //set state "product" to empty object
                         product.value = {};
                     }
+
+                    // hide suggestions when pressing enter
+                    suggestions.value = [];
+                    suggestionsVisible.value = false;
                 });
             }
 
@@ -199,6 +269,10 @@
 
                 //set state "barcode" to empty string
                 barcode.value = '';
+
+                //clear suggestions
+                suggestions.value = [];
+                suggestionsVisible.value = false;
             }
 
             //define state grandTotal
@@ -233,6 +307,10 @@
 
                         //set change to "0"
                         change.value = 0;
+
+                        //ensure suggestions hidden
+                        suggestions.value = [];
+                        suggestionsVisible.value = false;
                     },
                 });
 
@@ -285,40 +363,55 @@
 
             //define state "customer_id"
             const customer_id = ref('');
+            const manualCustomer = ref(false);
+            const manualCustomerName = ref('');
 
             //method "storeTransaction"
             const storeTransaction = () => {
-
+            
+                // validasi sederhana: jika manual aktif tapi nama kosong
+                if (manualCustomer.value && (!manualCustomerName.value || manualCustomerName.value.trim() === '')) {
+                    Swal.fire({
+                        title: 'Perhatian',
+                        text: 'Nama customer belum diisi.',
+                        icon: 'warning'
+                    });
+                    return;
+                }
+            
                 //HTTP request
                 axios.post('/apps/transactions/store', {
-
+            
                     //send data to server
                     customer_id: customer_id.value ? customer_id.value.id : '',
+                    manual_customer_name: manualCustomer.value ? manualCustomerName.value.trim() : '',
                     discount: discount.value,
                     grand_total: grandTotal.value,
                     cash: cash.value,
                     change: change.value
                 })
                 .then(response => {
-
+            
                     //call method "clearSaerch"
                     clearSearch();
-
+            
+                    //reset customer input
+                    customer_id.value = '';
+                    manualCustomer.value = false;
+                    manualCustomerName.value = '';
+            
                     //set qty to "1"
                     qty.value = 1;
-
+            
                     //set grandTotal
                     grandTotal.value = props.carts_total;
-
+            
                     //set cash to "0"
                     cash.value = 0;
-
+            
                     //set change to "0"
                     change.value = 0;
-
-                    //set customer_id to ""
-                    customer_id.value = '';
-
+            
                     //show success alert
                     Swal.fire({
                         title: 'Success!',
@@ -328,20 +421,20 @@
                         timer: 2000
                     })
                     .then(() => {
-
+            
                         setTimeout(() => {
-
+            
                             //print
                             window.open(`/apps/transactions/print?invoice=${response.data.data.invoice}`, '_blank');
-
+            
                             //reload page
                             location.reload();
-
+            
                         }, 50);
-
+            
                     })
                 })
-
+            
             }
 
             return {
@@ -359,7 +452,14 @@
                 setDiscount,
                 setChange,
                 customer_id,
-                storeTransaction
+                manualCustomer,
+                manualCustomerName,
+                storeTransaction,
+                // new
+                suggestions,
+                suggestionsVisible,
+                onBarcodeInput,
+                selectSuggestion
             }
 
         }

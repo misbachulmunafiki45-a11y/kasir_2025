@@ -46,8 +46,11 @@ Route::post('/stocks/{product}/add', [\App\Http\Controllers\Apps\StockController
         //route transaction
         Route::get('/transactions', [\App\Http\Controllers\Apps\TransactionController::class, 'index'])->name('apps.transactions.index');
 
-        //route transaction searchProduct
+        //route transaction searchProduct (exact barcode)
         Route::post('/transactions/searchProduct', [\App\Http\Controllers\Apps\TransactionController::class, 'searchProduct'])->name('apps.transactions.searchProduct');
+
+        //route transaction searchProducts (autocomplete)
+        Route::post('/transactions/searchProducts', [\App\Http\Controllers\Apps\TransactionController::class, 'searchProducts'])->name('apps.transactions.searchProducts');
 
         //route transaction addToCart
         Route::post('/transactions/addToCart', [\App\Http\Controllers\Apps\TransactionController::class, 'addToCart'])->name('apps.transactions.addToCart');
