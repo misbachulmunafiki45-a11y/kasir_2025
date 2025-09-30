@@ -119,9 +119,13 @@
 
 <body>
     <div class="content">
+        <!-- Logo di atas, posisi tengah -->
+        <div style="text-align: center; margin-bottom: 6px;">
+            <img src="{{ asset('images/logo warung.png') }}" alt="Logo Warung" style="max-width: 120px; height: auto;" />
+        </div>
         <div class="title" style="padding-bottom: 13px">
             <div style="text-align: center;text-transform: uppercase;font-size: 15px">
-                Warung Mbok SUM
+                Warung Mlecor Mbok SUM
             </div>
             <div style="text-align: center">
                 Alamat: Desa Sragi Kec. Songgon
@@ -266,7 +270,8 @@
         </div>
         <div class="azost" style="margin-top: 5px">
             TERIMA KASIH<br>
-            ATAS KUNJUNGAN ANDA
+            ATAS KUNJUNGAN ANDA<br>
+            Kami Tunggu Kritik dan Saranya No Whatshapp diatas
         </div>
     </div>
 </body>

@@ -40,6 +40,37 @@
 
                             </div>
                         </div>
+
+                        <!-- Reprint Receipt Container (kiri) -->
+                        <div class="card border-0 rounded-3 shadow mt-3">
+                            <div class="card-body position-relative">
+                                <h5 class="fw-bold mb-3">Cetak Ulang Struk</h5>
+                                <div class="row g-3">
+                                    <div class="col-md-8">
+                                        <label class="form-label fw-bold">Nama Customer</label>
+                                        <input type="text" class="form-control" v-model="reprintInvoice" @input="onInvoiceInput" placeholder="Ketik nama customer (atau nomor invoice)">
+                                        <div v-if="invoiceSuggestionsVisible" class="list-group position-absolute w-100" style="z-index: 1050; max-height: 220px; overflow-y: auto;">
+                                            <button type="button"
+                                                    v-for="item in invoiceSuggestions"
+                                                    :key="item.invoice"
+                                                    class="list-group-item list-group-item-action"
+                                                    @click="selectInvoiceSuggestion(item)">
+                                                <div class="d-flex justify-content-between">
+                                                    <span class="fw-bold">{{ item.customer || '-' }}</span>
+                                                    <span>Rp. {{ formatPrice(item.grand_total) }}</span>
+                                                </div>
+                                                <div class="text-muted">{{ item.invoice }} · {{ item.date }}</div>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4 d-flex align-items-end">
+                                        <button @click.prevent="reprintReceipt" class="btn btn-success btn-md border-0 shadow text-uppercase w-100">Cetak Ulang</button>
+                                    </div>
+                                </div>
+                                <div class="text-muted mt-2" style="font-size: .9rem;">Masukkan nama customer untuk mencari transaksi. Anda juga bisa mengetik nomor invoice jika diinginkan.</div>
+                            </div>
+                        </div>
+
                     </div>
                     <div class="col-md-8">
 
@@ -76,27 +107,24 @@
                                         <input class="form-control" type="text" :value="auth.user.name" readonly>
                                     </div>
                                     <div class="col-md-6 float-end">
-                                        <label class="fw-bold d-flex align-items-center justify-content-between">
-                                            <span>Customer</span>
-                                            <div class="form-check form-switch">
-                                                <input class="form-check-input" type="checkbox" id="manualCustomerSwitch" v-model="manualCustomer">
-                                                <label class="form-check-label" for="manualCustomerSwitch">Input manual</label>
+                                        <label class="fw-bold mb-2">Customer</label>
+                                        <div class="d-flex align-items-center gap-3 mb-2">
+                                            <div class="flex-grow-1">
+                                                <VueMultiselect v-if="!manualCustomer" v-model="customer_id" label="name" track-by="name" :options="customers"></VueMultiselect>
+                                                <input v-else type="text" class="form-control" v-model="manualCustomerName" placeholder="Nama Customer (manual)">
                                             </div>
-                                        </label>
-                                        <div v-if="!manualCustomer">
-                                            <VueMultiselect v-model="customer_id" label="name" track-by="name" :options="customers"></VueMultiselect>
-                                        </div>
-                                        <div v-else>
-                                            <input type="text" class="form-control" v-model="manualCustomerName" placeholder="Nama Customer (manual)">
-                                            <small class="text-muted">Biarkan kosong toggle ini untuk memilih dari daftar Customers.</small>
+                                            <div class="form-check form-switch me-2">
+                                                <input class="form-check-input" type="checkbox" id="manualCustomerSwitch" v-model="manualCustomer">
+                                                <label class="form-check-label" for="manualCustomerSwitch"></label>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                                <hr>
+                                 </div>
+                                 <hr>
                                 <table class="table table-bordered">
                                     <thead>
                                         <tr style="background-color: #e6e6e7;">
-                                            <th scope="col">#</th>
+                                            <th scope="col">Action</th>
                                             <th scope="col">Product Name</th>
                                             <th scope="col">Price</th>
                                             <th scope="col">Qty</th>
@@ -368,7 +396,7 @@
 
             //method "storeTransaction"
             const storeTransaction = () => {
-            
+
                 // validasi sederhana: jika manual aktif tapi nama kosong
                 if (manualCustomer.value && (!manualCustomerName.value || manualCustomerName.value.trim() === '')) {
                     Swal.fire({
@@ -378,10 +406,10 @@
                     });
                     return;
                 }
-            
+
                 //HTTP request
                 axios.post('/apps/transactions/store', {
-            
+
                     //send data to server
                     customer_id: customer_id.value ? customer_id.value.id : '',
                     manual_customer_name: manualCustomer.value ? manualCustomerName.value.trim() : '',
@@ -391,27 +419,27 @@
                     change: change.value
                 })
                 .then(response => {
-            
+
                     //call method "clearSaerch"
                     clearSearch();
-            
+
                     //reset customer input
                     customer_id.value = '';
                     manualCustomer.value = false;
                     manualCustomerName.value = '';
-            
+
                     //set qty to "1"
                     qty.value = 1;
-            
+
                     //set grandTotal
                     grandTotal.value = props.carts_total;
-            
+
                     //set cash to "0"
                     cash.value = 0;
-            
+
                     //set change to "0"
                     change.value = 0;
-            
+
                     //show success alert
                     Swal.fire({
                         title: 'Success!',
@@ -421,21 +449,133 @@
                         timer: 2000
                     })
                     .then(() => {
-            
+
                         setTimeout(() => {
-            
+
                             //print
                             window.open(`/apps/transactions/print?invoice=${response.data.data.invoice}`, '_blank');
-            
+
                             //reload page
                             location.reload();
-            
+
                         }, 50);
-            
+
                     })
                 })
-            
+
             }
+
+            // Reprint receipt by invoice
+            const reprintInvoice = ref('');
+            const reprintReceipt = () => {
+                // normalisasi input: hapus tanda kutip agar pencarian nama tidak gagal
+                const inv = (reprintInvoice.value || '').replace(/["']/g, '').trim();
+                if (!inv) {
+                    Swal.fire({
+                        title: 'Perhatian',
+                        text: 'Nama customer belum diisi.',
+                        icon: 'warning'
+                    });
+                    return;
+                }
+
+                // Jika input sudah berbentuk nomor invoice, langsung cetak
+                const isInvoiceFormat = /^TRX-/i.test(inv);
+                if (isInvoiceFormat) {
+                    window.open(`/apps/transactions/print?invoice=${encodeURIComponent(inv)}`, '_blank');
+                    return;
+                }
+
+                // Fallback: jika user mengetik nama customer, cari invoice terkait (ambil yang terbaru)
+                axios.get('/apps/transactions/searchInvoices', { params: { q: inv } })
+                    .then(res => {
+                        if (res.data && res.data.success && Array.isArray(res.data.data) && res.data.data.length > 0) {
+                            const invoiceToPrint = res.data.data[0].invoice; // ambil yang terbaru (query sudah DESC)
+                            reprintInvoice.value = invoiceToPrint;
+                            window.open(`/apps/transactions/print?invoice=${encodeURIComponent(invoiceToPrint)}`, '_blank');
+                        } else {
+                            Swal.fire({
+                                title: 'Tidak ditemukan',
+                                text: 'Tidak ada transaksi untuk nama tersebut. Coba ketik sebagian nama atau pilih dari saran.',
+                                icon: 'info'
+                            });
+                        }
+                    })
+                    .catch(() => {
+                        Swal.fire({
+                            title: 'Gagal',
+                            text: 'Tidak dapat mencari transaksi. Coba lagi.',
+                            icon: 'error'
+                        });
+                    });
+            };
+
+            // Autocomplete invoice suggestions
+            const invoiceSuggestions = ref([]);
+            const invoiceSuggestionsVisible = ref(false);
+            let invoiceSuggestionTimer = null;
+
+            const onInvoiceInput = () => {
+                // normalisasi input: hapus tanda kutip
+                const q = (reprintInvoice.value || '').replace(/["']/g, '').trim();
+
+                if (invoiceSuggestionTimer) clearTimeout(invoiceSuggestionTimer);
+
+                if (q.length < 2) {
+                    invoiceSuggestions.value = [];
+                    invoiceSuggestionsVisible.value = false;
+                    return;
+                }
+
+                invoiceSuggestionTimer = setTimeout(() => {
+                    axios.get('/apps/transactions/searchInvoices', { params: { q } })
+                        .then(res => {
+                            if (res.data && res.data.success) {
+                                invoiceSuggestions.value = res.data.data;
+                                invoiceSuggestionsVisible.value = invoiceSuggestions.value.length > 0;
+                            } else {
+                                invoiceSuggestions.value = [];
+                                invoiceSuggestionsVisible.value = false;
+                            }
+                        })
+                        .catch(() => {
+                            invoiceSuggestions.value = [];
+                            invoiceSuggestionsVisible.value = false;
+                        });
+                }, 250);
+            };
+
+            const selectInvoiceSuggestion = (item) => {
+                reprintInvoice.value = item.invoice;
+                invoiceSuggestions.value = [];
+                invoiceSuggestionsVisible.value = false;
+            };
+
+            // Daily invoices by date
+            const reprintDate = ref('');
+            const dailyInvoices = ref([]);
+            const selectedInvoice = ref('');
+
+            const loadDailyInvoices = () => {
+                const date = (reprintDate.value || '').trim();
+                axios.get('/apps/transactions/searchInvoices', { params: { date } })
+                    .then(res => {
+                        if (res.data && res.data.success) {
+                            dailyInvoices.value = res.data.data;
+                        } else {
+                            dailyInvoices.value = [];
+                        }
+                    })
+                    .catch(() => {
+                        dailyInvoices.value = [];
+                    });
+            };
+
+            const applySelectedInvoice = () => {
+                if (selectedInvoice.value) {
+                    reprintInvoice.value = selectedInvoice.value;
+                }
+            };
 
             return {
                 barcode,
@@ -459,7 +599,21 @@
                 suggestions,
                 suggestionsVisible,
                 onBarcodeInput,
-                selectSuggestion
+                selectSuggestion,
+                // reprint
+                reprintInvoice,
+                reprintReceipt,
+                // invoice autocomplete
+                invoiceSuggestions,
+                invoiceSuggestionsVisible,
+                onInvoiceInput,
+                selectInvoiceSuggestion,
+                // daily
+                reprintDate,
+                dailyInvoices,
+                selectedInvoice,
+                loadDailyInvoices,
+                applySelectedInvoice
             }
 
         }

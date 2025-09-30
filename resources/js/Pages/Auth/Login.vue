@@ -7,8 +7,8 @@
         <div class="fade-in">
             <div class="text-center mb-4">
                 <a href="" class="text-dark text-decoration-none">
-                    <img src="/images/mlecor.jpeg" width="70">
-                    <h3 class="mt-2 font-weight-bold">KASIR MIE MLECOR</h3>
+                    <img src="/images/logo warung.png" width="210" height="240" style="object-fit: contain; margin-bottom: 2px;" alt="Logo Warung">
+                    <h3 class="mt-1 font-weight-bold">KASIR WARUNG MLECOR</h3>
                 </a>
             </div>
             <div class="card-group">
@@ -26,13 +26,13 @@
                             <div class="input-group mb-3">
                                 <div class="input-group-prepend">
                                     <span class="input-group-text">
-                                        <i class="fa fa-envelope"></i>
+                                        <i class="fa fa-user"></i>
                                     </span>
                                 </div>
-                                <input class="form-control" v-model="form.email" :class="{ 'is-invalid': errors.email }" type="email" placeholder="Email Address">
+                                <input class="form-control" v-model="form.name" :class="{ 'is-invalid': errors.name }" type="text" placeholder="Username">
                             </div>
-                            <div v-if="errors.email" class="alert alert-danger">
-                                {{ errors.email }}
+                            <div v-if="errors.name" class="alert alert-danger">
+                                {{ errors.name }}
                             </div>
                             <div class="input-group mb-3">
                                 <div class="input-group-prepend">
@@ -96,7 +96,7 @@
 
             //define form state
             const form = reactive({
-                email: '',
+                name: '',
                 password: '',
             });
 
@@ -107,7 +107,7 @@
                 router.post('/login', {
 
                     //data
-                    email: form.email,
+                    name: form.name,
                     password: form.password,
                 });
             }

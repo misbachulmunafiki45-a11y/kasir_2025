@@ -1,10 +1,11 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Auth;
 
 //route home
 Route::get('/', function () {
-    if (auth()->check()) {
+    if (Auth::check()) {
         return redirect()->route('apps.dashboard');
     }
     return \Inertia\Inertia::render('Auth/Login');
@@ -44,7 +45,9 @@ Route::post('/stocks/{product}/add', [\App\Http\Controllers\Apps\StockController
         Route::resource('/customers', \App\Http\Controllers\Apps\CustomerController::class, ['as' => 'apps']);
 
         //route transaction
-        Route::get('/transactions', [\App\Http\Controllers\Apps\TransactionController::class, 'index'])->name('apps.transactions.index');
+        Route::get('/transactions', [\App\Http\Controllers\Apps\TransactionController::class, 'index'])
+            ->middleware('permission:transactions.index')
+            ->name('apps.transactions.index');
 
         //route transaction searchProduct (exact barcode)
         Route::post('/transactions/searchProduct', [\App\Http\Controllers\Apps\TransactionController::class, 'searchProduct'])->name('apps.transactions.searchProduct');
@@ -63,6 +66,9 @@ Route::post('/stocks/{product}/add', [\App\Http\Controllers\Apps\StockController
 
         //route transaction print
         Route::get('/transactions/print', [\App\Http\Controllers\Apps\TransactionController::class, 'print'])->name('apps.transactions.print');
+
+        //route transaction search invoices (autocomplete)
+        Route::get('/transactions/searchInvoices', [\App\Http\Controllers\Apps\TransactionController::class, 'searchInvoices'])->name('apps.transactions.searchInvoices');
 
         //route sales index
         Route::get('/sales', [\App\Http\Controllers\Apps\SaleController::class, 'index'])->name('apps.sales.index');
@@ -98,14 +104,20 @@ Route::post('/stocks/{product}/add', [\App\Http\Controllers\Apps\StockController
         Route::get('/stocks/pdf', [\App\Http\Controllers\Apps\StockController::class, 'pdf'])->name('apps.stocks.pdf');
         // temporary debug route to verify data & permissions (protected by auth)
         Route::get('/debug-counts', function() {
-            $user = auth()->user();
+            $user = Auth::user();
             return response()->json([
                 'db'            => config('database.connections.mysql.database'),
                 'products'      => \App\Models\Product::count(),
                 'categories'    => \App\Models\Category::count(),
                 'stock_entries' => \App\Models\StockEntry::count(),
                 'user'          => $user ? ['id' => $user->id, 'email' => $user->email] : null,
-                'permissions'   => $user ? $user->getAllPermissions()->pluck('name') : [],
+                // gunakan query eksplisit ke tabel pivot agar analyzer tidak error
+                'permissions'   => $user ? \Spatie\Permission\Models\Permission::query()
+                    ->join('model_has_permissions', 'permissions.id', '=', 'model_has_permissions.permission_id')
+                    ->where('model_has_permissions.model_type', \App\Models\User::class)
+                    ->where('model_has_permissions.model_id', $user->id)
+                    ->pluck('permissions.name')
+                    : [],
             ]);
         })->name('apps.debug.counts');
     });

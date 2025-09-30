@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Apps;
 
 use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 use App\Models\Cart;
 use App\Models\Product;
 use App\Models\Customer;
@@ -10,32 +11,24 @@ use App\Models\Transaction;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
-use Illuminate\Routing\Controllers\Middleware;
-use Illuminate\Routing\Controllers\HasMiddleware;
-
-class TransactionController extends Controller implements HasMiddleware
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Contracts\View\View;
+ 
+class TransactionController extends Controller
 {
-    /**
-     * middleware
-     *
-     * @return array
-     */
-    public static function middleware(): array
-    {
-        return [
-            new Middleware(['permission:transactions.index'], only: ['index']),
-        ];
-    }
+    // middleware permission dipindahkan ke routes agar kompatibel dengan IDE analyzer
 
     /**
      * index
      *
      * @return void
      */
-    public function index()
+    public function index(): InertiaResponse
     {
         //get cart
-        $carts = Cart::with('product')->where('cashier_id', auth()->user()->id)->latest()->get();
+        $carts = Cart::with('product')->where('cashier_id', Auth::id())->latest()->get();
 
         //get all customers
         $customers = Customer::latest()->get();
@@ -53,7 +46,7 @@ class TransactionController extends Controller implements HasMiddleware
      * @param  mixed $request
      * @return void
      */
-    public function searchProduct(Request $request)
+    public function searchProduct(Request $request): JsonResponse
     {
         //find product by barcode
         $product = Product::where('barcode', $request->barcode)->first();
@@ -77,7 +70,7 @@ class TransactionController extends Controller implements HasMiddleware
      * @param  mixed $request
      * @return void
      */
-    public function addToCart(Request $request)
+    public function addToCart(Request $request): RedirectResponse
     {
         //check stock product
         if(Product::whereId($request->product_id)->first()->stock < $request->qty) {
@@ -89,7 +82,7 @@ class TransactionController extends Controller implements HasMiddleware
         //check cart
         $cart = Cart::with('product')
                 ->where('product_id', $request->product_id)
-                ->where('cashier_id', auth()->user()->id)
+                ->where('cashier_id', Auth::id())
                 ->first();
 
         if($cart) {
@@ -106,7 +99,7 @@ class TransactionController extends Controller implements HasMiddleware
 
             //insert cart
             Cart::create([
-                'cashier_id'    => auth()->user()->id,
+                'cashier_id'    => Auth::id(),
                 'product_id'    => $request->product_id,
                 'qty'           => $request->qty,
                 'price'         => $request->sell_price * $request->qty,
@@ -123,7 +116,7 @@ class TransactionController extends Controller implements HasMiddleware
      * @param  mixed $request
      * @return void
      */
-    public function destroyCart(Request $request)
+    public function destroyCart(Request $request): RedirectResponse
     {
         //find cart by ID
         $cart = Cart::with('product')
@@ -142,7 +135,7 @@ class TransactionController extends Controller implements HasMiddleware
      * @param  mixed $request
      * @return void
      */
-    public function store(Request $request)
+    public function store(Request $request): JsonResponse
     {
         /**
         * algorithm generate no invoice
@@ -178,7 +171,7 @@ class TransactionController extends Controller implements HasMiddleware
 
         //insert transaction
         $transaction = Transaction::create([
-            'cashier_id'    => auth()->user()->id,
+            'cashier_id'    => Auth::id(),
             'customer_id'   => $customerId,
             'invoice'       => $invoice,
             'cash'          => $request->cash,
@@ -188,7 +181,7 @@ class TransactionController extends Controller implements HasMiddleware
         ]);
 
         //get carts
-        $carts = Cart::where('cashier_id', auth()->user()->id)->get();
+        $carts = Cart::where('cashier_id', Auth::id())->get();
 
         //insert transaction detail
         foreach($carts as $cart) {
@@ -222,7 +215,7 @@ class TransactionController extends Controller implements HasMiddleware
         }
 
         //delete carts
-        Cart::where('cashier_id', auth()->user()->id)->delete();
+        Cart::where('cashier_id', Auth::id())->delete();
 
         return response()->json([
             'success' => true,
@@ -236,7 +229,7 @@ class TransactionController extends Controller implements HasMiddleware
      * @param  mixed $request
      * @return void
      */
-    public function print(Request $request)
+    public function print(Request $request): View
     {
         //get transaction
         $transaction = Transaction::with('details.product', 'cashier', 'customer')->where('invoice', $request->invoice)->firstOrFail();
@@ -244,13 +237,60 @@ class TransactionController extends Controller implements HasMiddleware
         //return view
         return view('print.nota', compact('transaction'));
     }
+
+    /**
+     * searchInvoices
+     * Autocomplete untuk mencari invoice berdasarkan nomor atau nama customer.
+     */
+    public function searchInvoices(Request $request): JsonResponse
+    {
+        $q = trim($request->input('q', ''));
+        // normalisasi input: hilangkan tanda kutip tunggal/ganda dan spasi berlebih
+        $q = preg_replace('/["\']+/', '', $q);
+        $date = trim($request->input('date', ''));
+
+        $query = Transaction::query()
+            ->with('customer')
+            ->orderBy('created_at', 'DESC');
+
+        // filter by search text (invoice or customer name)
+        if ($q !== '') {
+            $query->where(function($w) use ($q) {
+                $w->where('invoice', 'LIKE', "%$q%")
+                  ->orWhereHas('customer', function($c) use ($q) {
+                      $c->where('name', 'LIKE', "%$q%");
+                  });
+            });
+        }
+
+        // if date provided (Y-m-d), filter one day
+        if ($date !== '') {
+            $query->whereDate('created_at', $date);
+        }
+
+        $query->limit(50);
+
+        $rows = $query->get()->map(function($t) {
+            return [
+                'invoice'     => $t->invoice,
+                'customer'    => optional($t->customer)->name,
+                'grand_total' => (int) $t->grand_total,
+                'date'        => $t->created_at->format('d/m/Y H:i'),
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'data'    => $rows,
+        ]);
+    }
     /**
      * searchProducts
      *
      * @param  mixed $request
      * @return void
      */
-    public function searchProducts(Request $request)
+    public function searchProducts(Request $request): JsonResponse
     {
         $q = trim($request->input('q', ''));
 

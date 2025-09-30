@@ -17,9 +17,9 @@ class UserTableSeeder extends Seeder
     {
         //create or get user admin (idempotent)
         $user = User::firstOrCreate(
-            ['email' => 'admin@gmail.com'],
+            ['name' => 'admin'],
             [
-                'name'      => 'Administrator',
+                'name'     => 'admin',
                 'password'  => bcrypt('password'),
             ]
         );
@@ -65,9 +65,9 @@ class UserTableSeeder extends Seeder
 
         // Buat user cashier default dan assign role cashier (idempotent)
         $cashierUser = User::firstOrCreate(
-            ['email' => 'cashier@gmail.com'],
+            ['name' => 'cashier'],
             [
-                'name'     => 'Cashier',
+                'email'    => 'cashier',
                 'password' => bcrypt('password'),
             ]
         );
